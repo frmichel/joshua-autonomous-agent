@@ -1,7 +1,5 @@
 # Agent Memory Specification
 
----
-
 ## Overview
 
 This document specifies the memory architecture for the autonomous agent. The agent is not a pure assistant — it maintains its own identity, interests, and goals, and acts on its own initiative at regular intervals.
@@ -73,7 +71,6 @@ Field domains:
 }
 ```
 
----
 
 ## 2. User Profile
 
@@ -119,7 +116,6 @@ Redis entry (key: `user:profile`), full document overwritten on each update.
 }
 ```
 
----
 
 ## 3. Episodic Memory - _What has happended_
 
@@ -249,7 +245,6 @@ Field domains:
 }
 ```
 
----
 
 ## 4. Daily Discussion Summary
 
@@ -285,7 +280,6 @@ Each daily summary is stored as a JSON document with a common format that contai
 }
 ```
 
----
 
 ## 5. Knowledge Base (Semantic Memory)
 
