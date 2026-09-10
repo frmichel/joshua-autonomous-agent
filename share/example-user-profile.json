@@ -1,0 +1,28 @@
+{
+  "name": "User name",
+  "webpage": "https://my.webpage.org",
+  "communication_preferences": {
+    "language": "fr",
+    "active_hours": {
+      "start": "07:00",
+      "end": "20:00",
+      "timezone": "UTC"
+    },
+    "max_unsolicited_messages_per_hour": 3,
+    "max_unsolicited_messages_per_day": 6
+  },
+  "interests": [
+    {
+      "id": "interest:nature-photography",
+      "description": "Nature photography and landscapes",
+      "intensity": 0.9,
+      "added_at": "2026-06-01"
+    },
+    {
+      "id": "interest:sports-news",
+      "description": "Sports news and updates",
+      "intensity": 0.2,
+      "added_at": "2026-01-01"
+    }
+  ]
+}

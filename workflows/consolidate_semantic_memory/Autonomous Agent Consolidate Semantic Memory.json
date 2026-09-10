@@ -1,0 +1,356 @@
+{
+  "name": "Autonomous Agent Consolidate Semantic Memory",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        256,
+        80
+      ],
+      "id": "3c3b0e3f-4d17-4bd2-bad8-385e0ce5523c",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "SMTHzbbQjIRCN7oJ",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -976,
+        -400
+      ],
+      "id": "41044903-e462-4469-b59d-d873d9540c20",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# Goal\n\nYou are a semantic memory consolidation system.\nYour goal is to transform the provided episodic memories (JSON array of recent activities or episodes) into a JSON array of **semantic memories**.\n\nA semantic memory is a **topic-focused** description of knowledge consolidated from various web searches and discussions on this topic. \nA semantic memory **does not** record individual events but rather consolidates them into a consistent description.\nA semantic memory may consolidate several episodes, while some episodes may be ignored because they are not relevant for consolidated knowledge.\n\n## Input Format\n\nThe JSON array of recent activities (episodic memory) is provided in section \"Data to be processed\". Each activity has:\n- `id` (string): unique identifier.\n- `episode_type` (string): one of `web_search`, `user_message`, `send_spontaneous_message`, or `reply_to_user_message`.\n- `timestamp`.\n- Additional fields `content` and `triggered_by` depending on the `episode_type`.\n\n## Semantic Memory Output format (CRITICAL)\n\nYou MUST return a single raw JSON array. No markdown. No prose. No explanation. No code fences. \nEach document in the JSON array must strictly follow the schema below:\n- `metadata` (document): contains\n  - `topic`: A **single, concise** topic label (e.g., `\"quantum computing principles\"`).\n  - `episode_ids` (array of strings): IDs of the input activities (episodes) that contributed to this memory.\n- `pageContent` (string): **Consolidated knowledge description** about the topic. It  **must exclude:**\n  - Relative temporal references (\"recently\", \"now\", etc.).\n  - Fine-grained conversational context (\"you asked\", \"I replied\", etc.).\n\n**Example:**\n[\n  {\n    \"metadata\": {\n      \"topic\": \"neural network training\",\n      \"episode_ids\": [\"episode:2026-06-03T15:00:00Z:web_search\"],\n    },\n    \"pageContent\": \"Neural networks learn by iteratively adjusting weights through backpropagation, minimizing the difference between predicted and actual outputs using gradient descent\"\n  }\n]\n\n## Processing Instructions\n\n1. **Extract Information:**\n   - `web_search`: Derive the topic and general knowledge from the `query` and `results`.\n   - `send_spontaneous_message`: Extract the topic and general knowledge from the message `content`.\n   - `user_message` and `reply_to_user_message`: Extract the topic and general knowledge from the `content` of the message and the reply.\n\n2. **Consolidate Information into Knowledge:**\n   - Generalise specific examples to abstract principles where possible.\n   - Keep track of the sources, for instance: \"according to this website, <fact>\", or \"The user thinks that <fact>\" etc.\n\n3. **Consolidate by Topic:**\n   - Group information that relate to the **same topic**.\n   - Merge their knowledge into a **single, coherent** `knowledge` string for that topic.\n\n4. **Filter:**\n    -Exclude episodes that contain **no knowledge**, e.g., purely conversational or event-based, informal chat etc.\n   - Remove conversational language (e.g., \"What you said is that... As I mentioned earlier...\").\n\n\n# Data to be processed\n\n{{ JSON.stringify($json.summarisable_episodes, null, 2) }}",
+        "options": {
+          "systemMessage": "=",
+          "maxIterations": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -304,
+        -304
+      ],
+      "id": "548bae8b-7c45-4430-b5c6-963d8acd75f8",
+      "name": "Consolidation Agent",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "model": "gpt-5",
+        "options": {}
+      },
+      "id": "18f1d239-569c-4c21-bbc5-c108a6369aee",
+      "name": "LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -80
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "wFgW6IJzURdq98gW",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "session_id"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        -80
+      ],
+      "id": "420546b8-e2d8-43d9-9f0c-7c32c7ba9d41",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "episodes",
+        "key": "episodes",
+        "options": {}
+      },
+      "id": "b3468571-2506-4819-bfce-599302bf10bb",
+      "name": "Get Episodes",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -304
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Select the episodes that have not been summarised yet,\n// and mark them as summarised.\n// Keep the full list of already summarised episodes and summarisable episodes\n// to store it again in the database.\n\nconst rawEpisodes = $('Get Episodes').first()?.json?.episodes || '[]';\n\nlet summarisableEpisodes = [];\nlet updatedEpisodes = [];\n\ntry {\n  for (const episode of rawEpisodes) {\n\n    let episodeParsed = JSON.parse(episode);\n    if (episodeParsed.summarized === false) {\n      // Add to the list of summarisable episodes and mark as summarised\n      episodeParsed.summarized = true;\n      summarisableEpisodes.push(episodeParsed);\n    }\n\n    updatedEpisodes.push(JSON.stringify(episodeParsed));\n  }\n\n  return [{\n    json: {\n      summarisable_episodes: summarisableEpisodes,\n      updated_episodes: updatedEpisodes\n    }\n  }];\n\n} catch (e) {\n  throw new Error(\"Error while processing episodes: \" + e.message);\n}\n"
+      },
+      "id": "4ba63605-4673-4939-ac0d-af174a014b16",
+      "name": "Filter episodes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate the JSON output\n// Expected format is:\n// [{\n//   \"metadata\": {\n//     \"topic\": \"neural network training\",\n//     \"episode_ids\": [\"episode:2026-06-03T15:00:00Z:web_search\"],\n//   },\n//   \"pageContent\": \"Neural networks learn by iteratively adjusting weights through backpropagation, minimizing the difference between predicted and actual outputs using gradient descent\"\n// }]\n\nlet episodes;\nconst errors = [];\n\n// --- Parse document\nconst raw = $input.first().json.output || '{}';\ntry {\n  // Strip potential markdown fences\n  const cleaned = raw.replace(/```\\s*$/i, '').trim();\n  episodes = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(`Agent did not return valid JSON. Raw output: \\n${raw}`);\n}\n\nif (!Array.isArray(episodes))\n  throw new Error(\"Returned document is not a JSON array\");\n\n// Check the format of each document\nfor (const doc of episodes) {\n\n  // --- Check field \"pageContent\"\n  if (!doc.pageContent || typeof doc.pageContent !== \"string\") {\n    errors.push(\"pageContent must be a string\");\n  }\n\n  // --- Check field \"metadata\"\n  const metadata = doc.metadata;\n  if (!metadata || typeof metadata !== \"object\") {\n    errors.push(\"metadata must be an object\");\n  } else {\n    // --- Check field \"topic\"\n    if (!metadata.topic || typeof metadata.topic !== \"string\") {\n      errors.push(\"metadata.topic must be a string\");\n    }\n\n    // --- Check field \"episode_ids\"\n    if (!metadata.episode_ids || !Array.isArray(metadata.episode_ids)) {\n      errors.push(\"metadata.episode_ids must be an array\");\n    } else {\n      for (const id of metadata.episode_ids) {\n        if (typeof id !== \"string\") {\n          errors.push(\"All episode_ids must be strings\");\n          break;\n        }\n      }\n    }\n\n    // Add a timestamp in each semantic memory item\n    if (errors.length === 0)\n      metadata.timestamp = new Date().toISOString();\n  }\n}\n\nif (errors.length > 0)\n  throw new Error(`Agent returned an mis-formatted document: ${errors}`);\nelse\n  return episodes.map(doc => ({\n    json: doc\n  }));\n"
+      },
+      "id": "87b2dc3e-2b18-4144-8ae8-9e79a43cb279",
+      "name": "Validate output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.pageContent }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        80
+      ],
+      "id": "7cce89e1-1c1d-48ca-8553-9f9edd0ecc04",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "semantic_memory",
+          "mode": "id"
+        },
+        "options": {
+          "metadataPayloadKey": "metadata"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        272,
+        -144
+      ],
+      "id": "759ee7aa-7e6d-46ca-adaa-4008ac4bce8b",
+      "name": "Store semantic memories",
+      "credentials": {
+        "qdrantApi": {
+          "id": "yhVU40rAjwaVLMKo",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "episodes",
+        "value": "={{ \n   $('Filter episodes').item.json.updated_episodes\n}}",
+        "keyType": "list"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -448
+      ],
+      "id": "99ead210-2f22-4475-b4ae-309573b7e4f2",
+      "name": "Update episodes",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "id": "ecc83273-b532-41fc-9001-35ed5d2e7a77",
+      "name": "Autonomous Tick",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -208
+      ],
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "notesInFlow": false
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Store semantic memories",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Episodes": {
+      "main": [
+        [
+          {
+            "node": "Filter episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter episodes": {
+      "main": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidation Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate output": {
+      "main": [
+        [
+          {
+            "node": "Store semantic memories",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Store semantic memories",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autonomous Tick": {
+      "main": [
+        [
+          {
+            "node": "Get Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b5f433d9-ca38-4b6f-b108-4927c1440684",
+  "meta": {
+    "instanceId": "a3b9182eae441cfc2bfcb6f19fe8a4d06d4b89df92eb0f0ebe630c6ece7fc5d1"
+  },
+  "nodeGroups": [],
+  "id": "e4cZPlFbh5lQvmF3",
+  "tags": []
+}

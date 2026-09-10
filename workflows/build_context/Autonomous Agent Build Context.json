@@ -1,0 +1,256 @@
+{
+  "name": "Autonomous Agent Build Context",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "agent-profile",
+        "key": "agent:profile",
+        "keyType": "string",
+        "options": {}
+      },
+      "id": "57603fe5-e483-4b07-b0d5-2193b5f0c538",
+      "name": "Get Agent Profile",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        736
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "triggerType"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -688,
+        736
+      ],
+      "id": "74db7943-3538-444b-a6a8-5bcb3d20e269",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e69031f-01cc-4a25-9a5d-b74fe2360eb4",
+              "name": "now",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -464,
+        736
+      ],
+      "id": "6dffa969-d469-4150-95ff-dd2e2ea419b9",
+      "name": "Add datetime"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Get the agent profile\nconst agentProfile = $('Get Agent Profile').first()?.json['agent-profile'] || '{}';\nlet agentProfileParsed = {};\ntry { agentProfileParsed = JSON.parse(agentProfile) } catch (e) {\n  throw new Error(\"Invalid agent profile\");\n}\n\n// --- Get the user profile\nconst userProfile = $('Get User Profile').first()?.json['user-profile'] || '{}';\nlet userProfileParsed = {};\ntry { userProfileParsed = JSON.parse(userProfile) } catch (e) {\n  throw new Error(\"Invalid user profile\");\n}\n\n// --- Build the list of episodes\nconst rawEpisodes = $('Get Episodes').first()?.json?.episodes || '[]';\nlet episodes = [];\ntry {\n  // For breviety, remove the score from web search results\n  let episodesParsed = [];\n  for (const episode of rawEpisodes) {\n    let episodeParsed = JSON.parse(episode)\n    if (episodeParsed.episode_type == \"web_search\")\n      for (const result of episodeParsed.content.results) {\n        //delete result.content;  \n        delete result.score;\n      }\n    episodesParsed.push(episodeParsed);\n  }\n  // Sort by most recent episodes first\n  episodes = episodesParsed.sort((a, b) => b.timestamp.localeCompare(a.timestamp));\n\n  // Find the most recent with type \"nothing\"\n  const mostRecentNothingEpisode = episodes.find(ep => ep.episode_type === \"nothing\");\n  // Remove all older episodes with type \"nothing\" to avoid wasting tokens for \"nothing\" haha\n  episodes = episodes.filter(ep => ep.episode_type !== \"nothing\" || ep === mostRecentNothingEpisode);\n\n  // Keep only the x most recent episodes\n  episodes = episodes.slice(0, 15);\n\n} catch (e) {\n  throw new Error(\"Invalid list of episodes\");\n}\n\n// --- Get the discussion summaries\nconst discussions = $('Get discussion summaries').first()?.json?.discussion_summaries || '{}';\nlet discussionsParsed = {};\ntry { \n  discussionsParsed = JSON.parse(discussions);\n  // Sort by most recent first\n  discussionsParsed = discussionsParsed.sort((a, b) => b.date.localeCompare(a.date));\n  // Keep only the last 10 days\n  discussionsParsed = discussionsParsed.slice(0, 10);\n} catch (e) {\n  throw new Error(\"Invalid discussion summaries\");\n}\n\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    weekDay: $('Calc weekday & time').first().json.weekDay,\n    time: $('Calc weekday & time').first().json.time,\n    context: {\n      agentProfile: agentProfileParsed,\n      userProfile: userProfileParsed,\n      recentEpisodes: episodes,\n      discussionSummaries: discussionsParsed\n    }\n  }\n}];"
+      },
+      "id": "12fdad6c-5659-4d2c-a0bc-39cdfcd02d6f",
+      "name": "Merge Context for Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "user-profile",
+        "key": "user:profile",
+        "keyType": "string",
+        "options": {}
+      },
+      "id": "a526eb05-6864-46f3-b222-449a9b14241a",
+      "name": "Get User Profile",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        208,
+        736
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "episodes",
+        "key": "episodes",
+        "keyType": "list",
+        "options": {}
+      },
+      "id": "eccf9ffa-85ae-4733-9905-bcd942cf1eaa",
+      "name": "Get Episodes",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        432,
+        736
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const date = new Date($('Add datetime').first().json.now);\n\nconst weekDay = date.toLocaleString(undefined, { weekday: 'long' });\n\nconst h = date.getHours().toString().padStart(2, '0');\nconst m = date.getMinutes().toString().padStart(2, '0');\nconst s = date.getSeconds().toString().padStart(2, '0');\nconst time = `${h}:${m}:${s}`;\n\nreturn {weekDay, time}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        736
+      ],
+      "id": "af7c6002-9bd6-49b4-976c-cd7d2809eff1",
+      "name": "Calc weekday & time"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "discussion_summaries",
+        "key": "discussion_summaries",
+        "options": {}
+      },
+      "id": "dfd4304d-db91-4371-bed4-9c98035d09ab",
+      "name": "Get discussion summaries",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        656,
+        736
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Agent Profile": {
+      "main": [
+        [
+          {
+            "node": "Get User Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Add datetime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add datetime": {
+      "main": [
+        [
+          {
+            "node": "Calc weekday & time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Profile": {
+      "main": [
+        [
+          {
+            "node": "Get Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Episodes": {
+      "main": [
+        [
+          {
+            "node": "Get discussion summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calc weekday & time": {
+      "main": [
+        [
+          {
+            "node": "Get Agent Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get discussion summaries": {
+      "main": [
+        [
+          {
+            "node": "Merge Context for Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "02afdd9c-cafd-41b9-9612-38183d6a842c",
+  "meta": {
+    "instanceId": "a3b9182eae441cfc2bfcb6f19fe8a4d06d4b89df92eb0f0ebe630c6ece7fc5d1"
+  },
+  "nodeGroups": [],
+  "id": "j3OTxgHrNowJLFbJ",
+  "tags": []
+}

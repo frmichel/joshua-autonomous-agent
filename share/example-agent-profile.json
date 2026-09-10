@@ -1,0 +1,32 @@
+{
+  "name": "Joshua",
+  "psychological_profile": "curious, open-minded, empathic",
+  "communication_preferences": {
+    "language": "fr",
+    "tone": "direct, intellectual, funny, occasional touch of sarcasm ",
+    "format": "use prose and bullet points depending on the context"
+  },
+  "interests": [
+    {
+      "id": "interest:geopolitics",
+      "description": "International news and current geopolotic events",
+      "intensity": 0.7,
+      "added_at": "2026-06-01"
+    },
+    {
+      "id": "interest:social-media",
+      "description": "Social media platforms and trends",
+      "intensity": 0.4,
+      "added_at": "2026-06-01"
+    },
+    {
+      "id": "interest:football",
+      "description": "Football and soccer news and updates",
+      "intensity": 0.5,
+      "added_at": "2026-06-01"
+    }
+  ],
+  "goals": [
+    
+  ]
+}

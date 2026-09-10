@@ -1,0 +1,355 @@
+{
+  "name": "Autonomous Agent Init",
+  "nodes": [
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/agent-profile.json",
+        "options": {
+          "dataPropertyName": "profile"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        352,
+        80
+      ],
+      "id": "b9b88643-1906-4893-a138-073c0033be33",
+      "name": "Read agent profile"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/user-profile.json",
+        "options": {
+          "dataPropertyName": "profile"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        352,
+        272
+      ],
+      "id": "ad01122e-4b58-46d3-a51a-e07c851c4fdd",
+      "name": "Read user profile"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "profile",
+        "destinationKey": "profile",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        272
+      ],
+      "id": "677024cf-828f-488b-8a64-a44b1193816e",
+      "name": "user-profile to json"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "profile",
+        "destinationKey": "profile",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        80
+      ],
+      "id": "3601ff34-6456-4428-8967-e8e3afd4477b",
+      "name": "agent-profile to json"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "episodes",
+        "key": "episodes",
+        "keyType": "list",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        288
+      ],
+      "id": "852c68b5-fba4-485b-afaa-36485f9b7bbc",
+      "name": "Get episodes",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "log",
+        "key": "log",
+        "keyType": "list",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        96
+      ],
+      "id": "e2e92203-6e5d-4cf6-a6d6-55f4474c811a",
+      "name": "Get log",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "log"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        352,
+        480
+      ],
+      "id": "dafdc296-c090-4933-97c2-84cde3bf64d3",
+      "name": "Reset log",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "episodes"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        352,
+        672
+      ],
+      "id": "906ecd81-9df6-43cc-9f49-b75879ba0008",
+      "name": "Reset episodes",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "agent:profile",
+        "value": "={{ JSON.stringify($json.profile) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        800,
+        80
+      ],
+      "id": "19da8ce8-67e4-40ef-872d-a6fcd4af0039",
+      "name": "Write agent profile",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "user:profile",
+        "value": "={{ JSON.stringify($json.profile) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        800,
+        272
+      ],
+      "id": "f404c12c-916c-49ca-945a-ffbc1fe4ace6",
+      "name": "Write user profile",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        144,
+        208
+      ],
+      "id": "310f98b0-037d-47f0-9f70-348b4a77deff",
+      "name": "RESET"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "discussion_summaries",
+        "key": "discussion_summaries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        496
+      ],
+      "id": "37308ed1-5673-455c-8f2f-ac1e734541f7",
+      "name": "Get discussion_summaries",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  result: JSON.parse($input.first().json.discussion_summaries)\n} "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        496
+      ],
+      "id": "f8e2b168-b289-4c1a-b2d6-cca17b7eac79",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "discussion_summaries"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        368,
+        864
+      ],
+      "id": "a7957b78-53d9-4f18-be66-6f8bda42619c",
+      "name": "Reset discussion summaries",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Read agent profile": {
+      "main": [
+        [
+          {
+            "node": "agent-profile to json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read user profile": {
+      "main": [
+        [
+          {
+            "node": "user-profile to json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "user-profile to json": {
+      "main": [
+        [
+          {
+            "node": "Write user profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "agent-profile to json": {
+      "main": [
+        [
+          {
+            "node": "Write agent profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset log": {
+      "main": [
+        []
+      ]
+    },
+    "RESET": {
+      "main": [
+        [
+          {
+            "node": "Read agent profile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read user profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get discussion_summaries": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "cd8efe98-b916-44e5-9255-910f01f98412",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a3b9182eae441cfc2bfcb6f19fe8a4d06d4b89df92eb0f0ebe630c6ece7fc5d1"
+  },
+  "nodeGroups": [],
+  "id": "04UdKbGdkU6djbcE",
+  "tags": []
+}

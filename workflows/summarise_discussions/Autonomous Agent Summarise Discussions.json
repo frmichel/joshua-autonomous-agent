@@ -1,0 +1,369 @@
+{
+  "name": "Autonomous Agent Summarise Discussions",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -976,
+        -768
+      ],
+      "id": "5e7de752-e7e7-4985-8df2-b826783b13cb",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# Goal\n\nSummarise the discussions that happended on a certain date between an agent and a user.\n\nYou get as input a JSON array of the messages exchanged between the agent and the user, and you have to return a JSON array of **discussion summaries**.\n\nA discussion summary is **topic-focused** and **succinct**. If several topics have been discussed, generate one entry for each topic.\nA discussion summary does not record each individual message, but **briefly consolidates the salient arguments**, possibly naming the user and agent if they disagree.\nA discussion summary is written in same language as that of the discussion.\n\n\n## Input Format\n\nThe JSON array of recent messages (episodes) is formatted as follows:\n- `date` (string): the date of the conversations.\n- `episodes` (array of documents): each document describes one message exchanged\n  - `episode.episode_type` = `user_message` : message sent by the user.\n  - `episode.episode_type` = `send_spontaneous_message` or `reply_to_user_message`: message sent by the agent.\n\n## Output format (CRITICAL)\n\nYou MUST return a single raw JSON array. No markdown. No prose. No explanation. No code fences. \nEach document in the JSON array must strictly follow the schema below:\n- `date` (string): the date of the conversations.\n- `discussion_summaries` (array of documents): contains\n  - `topic` (string): A **single, concise** topic label (e.g., `\"quantum computing principles\"`).\n  - `content` (string): short summary of the discussion about this topic.\n\n**Example:**\n\n{\n  \"date\": \"2026-06-03\",\n  \"discussion_summaries\": [\n    { \n      \"topic\": \"deep learning principles\",\n      \"content\": \"Neural networks learn by iteratively adjusting weights through backpropagation. User proposed to expand discussion scope to transformers another time.\"\n    }\n  ]\n}\n\n## Processing Instructions\n\n1. **Extract Information:**\n\nExtract the topic and conversation details from fields `content`.\n\n2. **Consolidate by Topic:**\n   - Group exchanges that relate to the **same topic**.\n   - Summarise their content into a **single, short** string.\n\n3. **Filter:**\n\nExclude messages that contain **no information**, e.g., conversational politness, informal chat with no specific summarisable information, etc.\n\n# Data to be processed\n\n{{ JSON.stringify($json.episodes, null, 2) }}",
+        "options": {
+          "systemMessage": "=",
+          "maxIterations": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -80,
+        -672
+      ],
+      "id": "acd8109c-9eeb-4e09-97f1-5d9534e42747",
+      "name": "Consolidation Agent",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "model": "gpt-5",
+        "options": {}
+      },
+      "id": "7b82e015-b8c9-476a-9098-033ce50e56ee",
+      "name": "LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -448
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "wFgW6IJzURdq98gW",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "session_id"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        64,
+        -448
+      ],
+      "id": "366be1a3-d7d2-45d6-a97a-a9b14ee97598",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "episodes",
+        "key": "episodes",
+        "options": {}
+      },
+      "id": "9e768180-b17a-44f7-ba68-3f9f1f2f7077",
+      "name": "Get Episodes",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -672
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];\n\n// --- Build the list of episodes\nconst rawEpisodes = $('Get Episodes').first()?.json?.episodes || '[]';\nlet episodes = [];\nlet result = [];\n\ntry {\n  for (const rawEpisode of rawEpisodes) {\n    let episode = JSON.parse(rawEpisode)\n    if ([\"user_message\", \"reply_to_user_message\", \"send_spontaneous_message\"].includes(episode.episode_type)) {\n      delete episode.summarized;\n      delete episode.triggered_by;\n      delete episode.reason;\n      episodes.push(episode);\n    }\n  }\n\n  // Keep only episodes from yesterday\n  result = episodes.filter(ep => ep.timestamp.split('T')[0] === yesterday);\n\n  // Sort episodes in chronological order\n  result = result.sort((a, b) => a.timestamp.localeCompare(b.timestamp));\n\n} catch (e) {\n  throw new Error(\"Invalid list of episodes\");\n}\n\nreturn [{\n  json: {\n    date: yesterday,\n    episodes: result\n  }\n}];"
+      },
+      "id": "026deceb-c294-48cc-a9cc-365810390f97",
+      "name": "Filter episodes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        -672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate the JSON output\n// Expected format is:\n// [\n//   {\n//     \"date\": \"2026-06-03\",\n//     \"discussion_summaries\": [\n//       { \n//         \"topic\": \"topics\",\n//         \"content\": \"summary string\"\n//       }\n//     ]\n//   }\n// ]\n\nlet result;\nconst errors = [];\n\n// --- Parse document\nconst raw = $input.first().json.output || '{}';\ntry {\n  // Strip potential markdown fences\n  const cleaned = raw.replace(/```\\s*$/i, '').trim();\n  result = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(`Agent did not return valid JSON. Raw output: \\n${raw}`);\n}\n\nif (!Array.isArray(result))\n  throw new Error(\"Returned document is not a JSON array\");\n\n// Check the format of each document\nfor (const doc of result) {\n\n  // --- Check field \"pageContent\"\n  if (!doc.date || typeof doc.date !== \"string\") {\n    errors.push(\"date must be a string\");\n  }\n\n  // --- Check field \"discussion_summaries\"\n  const summaries = doc.discussion_summaries;\n  if (!summaries || !Array.isArray(summaries)) {\n    errors.push(\"discussion_summaries must be an array\");\n  } else {\n\n    for (const summary of summaries) {\n      // --- Check field \"topic\"\n      if (!summary.topic || typeof summary.topic !== \"string\") {\n        errors.push(\"discussion_summaries.*.topic must be a string\");\n      }\n\n      // --- Check field \"content\"\n      if (!summary.content || typeof summary.content !== \"string\") {\n        errors.push(\"discussion_summaries.*.content must be a string\");\n      }\n    }\n  }\n}\n\nif (errors.length > 0)\n  throw new Error(`Agent returned a mis-formatted document: ${errors}`);\nelse\n  return result;\n"
+      },
+      "id": "a9f3b713-ee0a-4bf8-8a6d-49ba50170022",
+      "name": "Validate output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -672
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "id": "c890275d-042d-4eae-b8af-4b9db039c911",
+      "name": "Autonomous Tick",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -576
+      ],
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9a9fbd6f-fe0b-45f6-becf-5991f2d62b36",
+              "leftValue": "={{ $json.episodes }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -304,
+        -672
+      ],
+      "id": "ee818fd6-4e0e-442e-a08e-a19ed3b9917b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "discussion_summaries",
+        "key": "discussion_summaries",
+        "options": {}
+      },
+      "id": "6c0b3292-0761-4fa7-bf5d-c4fe7ad2c282",
+      "name": "Get summaries",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        496,
+        -672
+      ],
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "discussion_summaries",
+        "value": "={{ \n   JSON.stringify($('Update summaries').item.json.summaries) \n}}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        944,
+        -672
+      ],
+      "id": "9e92fb24-6a5e-41b9-8927-865de10f63c5",
+      "name": "Set summaries",
+      "credentials": {
+        "redis": {
+          "id": "7cPPjjKyRgiZlPFH",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validated input format:\n// [\n//   {\n//     \"date\": \"2026-06-03\",\n//     \"discussion_summaries\": [\n//       { \n//         \"topic\": \"topic\",\n//         \"content\": \"summary string\"\n//       }\n//     ]\n//   }\n// ]\n\nconst rawSummaries = $('Get summaries').first()?.json?.discussion_summaries || '[]';\nlet summaries = [];\n\nconst input = $('Validate output').first()?.json || '[]';\nconst date = input.date;\n\ntry {\n  summaries = JSON.parse(rawSummaries);\n\n  // If date already in the summaries, replace the summaries \n  // for that date with the new summaries\n  const existingSummary = summaries.find(s => s.date === date);\n  if (existingSummary) {\n    existingSummary.discussion_summaries = input;\n  }\n  else {\n    // Otherwise, add a new entry for the date\n    summaries.push(input);\n  }\n} catch (e) {\n  throw new Error(\"Invalid list of summaries\");\n}\n\nreturn [{\n  json: {\n    summaries\n  }\n}];"
+      },
+      "id": "89375674-364e-4aa3-b91f-bf48126187d3",
+      "name": "Update summaries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -672
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Episodes": {
+      "main": [
+        [
+          {
+            "node": "Filter episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter episodes": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidation Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate output": {
+      "main": [
+        [
+          {
+            "node": "Get summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autonomous Tick": {
+      "main": [
+        [
+          {
+            "node": "Get Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get summaries": {
+      "main": [
+        [
+          {
+            "node": "Update summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update summaries": {
+      "main": [
+        [
+          {
+            "node": "Set summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "15f72bff-7625-46b2-a74c-3dd2c7f4c3b0",
+  "meta": {
+    "instanceId": "a3b9182eae441cfc2bfcb6f19fe8a4d06d4b89df92eb0f0ebe630c6ece7fc5d1"
+  },
+  "nodeGroups": [],
+  "id": "o8pNieJ2ZVZ5IrV7",
+  "tags": []
+}
