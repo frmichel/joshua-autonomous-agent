@@ -246,19 +246,21 @@ Field domains:
 ```
 
 
-## 4. Daily Discussion Summary
+## 4. Daily Discussion Summaries
 
 ### Role
 
-Daily summary of the discussions between the agent and the user. 
+Daily summaries of the discussions between the agent and the user. 
 
-Unlike the episodic memory which stores raw events of all types, the discussion summary focuses only on discussions.
- 
-This is meant to provide the agent with a succinct daily record of the discussion topics, but to provide a longer context (e.g. in the order of 10 days) than the episodic memory which is very detailed but has a limited time span (~2 to 3 days).
+Unlike the episodic memory which stores raw events of all types, the discussion summaries focus only on exchanged messages.
+
+Each daily entry main contain several summaries, one for each topic discussed on that day.
+
+This memory is meant to provide the agent with a succinct daily record of the discussion topics, spanning a longer period (configured to 10 days by default) than the episodic memory which is very detailed but has a limited time span (~2 to 3 days).
 
 ### Critical Limit
 
-Injecting the full episodic log into the LLM context becomes impractical beyond a few days. A sliding window of last n episodes is used for context injection, combined with periodic summarization (1) into the knowledge base for long-term retention, and (2) into a daily discussion summary.
+A sliding window of the last 10 days is used for context injection.
 
 ### Implementation
 

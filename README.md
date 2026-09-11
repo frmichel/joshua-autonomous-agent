@@ -1,10 +1,10 @@
 # Joshua, an Autonomous Agent
 
-This project investigates if we can use LLMs to **simulate an autonomous agent with its own mental life and will**.
+This project investigates whether we can use LLMs to **simulate an autonomous agent with its own mental life and will**.
 
-It is an n8n-based agent with a persistent identity, interests, goals, user-aware context, and long-term memory. The agent can decide to initiate conversations with the user, respond to a user's message, research a topic, read a webpage, assign itself some goals to handle in the future, or remain idle. 
+It is an n8n-based agent with a persistent identity, interests, goals, user-aware context, and memory. The agent can decide to initiate conversations   with the user, respond to a user's message, research a topic, read a webpage, assign itself some goals to handle in the future, or remain idle. 
 
-Each run receives the agent profile, user profile, recent activity, discussion summaries, and relevant semantic knowledge instead.
+Each run receives the agent profile, user profile, recent activity, and recent discussion summaries.
 
 ## Main Design Principles
 
@@ -16,14 +16,16 @@ Each run receives the agent profile, user profile, recent activity, discussion s
 - Keep operational memory maintenance separate from the agent's main reasoning loop.
 - Use strict JSON contracts between the LLM prompts and the n8n workflows.
 
+## Memory Model
+
 The memory model and its Redis/Qdrant data structures are documented in [memories_specification.md](memories_specification.md). 
 
 ## How it works
 
-The main workflow loads context and invokes one of two prompt paths:
+The main workflow (see diagram below) loads context and invokes one of two prompt paths:
 
-- **User message** (upper-left part of the diagram below): an incoming WhatsApp message is recieved and the agent chooses whether to reply directly, search, read a page, update a goal or do nothing.
-- **Autonomous tick** (bottom-left part of the diagram below): an automatic trigger activates the agent which may research a topic, pursue a goal, send a spontaneous message or do nothing.
+- **User message** (upper-left part of the diagram): an incoming WhatsApp message is recieved and the agent chooses whether to reply directly, search, read a page, update a goal or do nothing.
+- **Autonomous tick** (bottom-left part of the diagram): an automatic trigger activates the agent which may research a topic, pursue a goal, send a spontaneous message or do nothing.
 
 ![Main workflow](./workflow_snapshot.png)
 
