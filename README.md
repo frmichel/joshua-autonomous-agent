@@ -22,8 +22,10 @@ The memory model and its Redis/Qdrant data structures are documented in [memorie
 
 The main workflow loads context and invokes one of two prompt paths:
 
-- **Autonomous tick:** a schedule activates the agent, which may research a topic, pursue a goal, send a spontaneous message, or do nothing.
-- **User message:** an incoming WhatsApp message is recieved and the agent chooses whether to search, read a page, update a goal, reply, or do nothing.
+- **User message** (upper-left part of the diagram below): an incoming WhatsApp message is recieved and the agent chooses whether to reply directly, search, read a page, update a goal or do nothing.
+- **Autonomous tick** (bottom-left part of the diagram below): an automatic trigger activates the agent which may research a topic, pursue a goal, send a spontaneous message or do nothing.
+
+![Main workflow](./workflow_snapshot.png)
 
 The supporting workflows provide the surrounding lifecycle:
 
