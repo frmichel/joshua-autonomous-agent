@@ -9,7 +9,7 @@
       "typeVersion": 1.2,
       "position": [
         -976,
-        -768
+        -864
       ],
       "id": "5e7de752-e7e7-4985-8df2-b826783b13cb",
       "name": "When Executed by Another Workflow"
@@ -17,7 +17,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=# Goal\n\nSummarise the discussions that happended on a certain date between an agent and a user.\n\nYou get as input a JSON array of the messages exchanged between the agent and the user, and you have to return a JSON array of **discussion summaries**.\n\nA discussion summary is **topic-focused** and **succinct**. If several topics have been discussed, generate one entry for each topic.\nA discussion summary does not record each individual message, but **briefly consolidates the salient arguments**, possibly naming the user and agent if they disagree.\nA discussion summary is written in same language as that of the discussion.\n\n\n## Input Format\n\nThe JSON array of recent messages (episodes) is formatted as follows:\n- `date` (string): the date of the conversations.\n- `episodes` (array of documents): each document describes one message exchanged\n  - `episode.episode_type` = `user_message` : message sent by the user.\n  - `episode.episode_type` = `send_spontaneous_message` or `reply_to_user_message`: message sent by the agent.\n\n## Output format (CRITICAL)\n\nYou MUST return a single raw JSON array. No markdown. No prose. No explanation. No code fences. \nEach document in the JSON array must strictly follow the schema below:\n- `date` (string): the date of the conversations.\n- `discussion_summaries` (array of documents): contains\n  - `topic` (string): A **single, concise** topic label (e.g., `\"quantum computing principles\"`).\n  - `content` (string): short summary of the discussion about this topic.\n\n**Example:**\n\n{\n  \"date\": \"2026-06-03\",\n  \"discussion_summaries\": [\n    { \n      \"topic\": \"deep learning principles\",\n      \"content\": \"Neural networks learn by iteratively adjusting weights through backpropagation. User proposed to expand discussion scope to transformers another time.\"\n    }\n  ]\n}\n\n## Processing Instructions\n\n1. **Extract Information:**\n\nExtract the topic and conversation details from fields `content`.\n\n2. **Consolidate by Topic:**\n   - Group exchanges that relate to the **same topic**.\n   - Summarise their content into a **single, short** string.\n\n3. **Filter:**\n\nExclude messages that contain **no information**, e.g., conversational politness, informal chat with no specific summarisable information, etc.\n\n# Data to be processed\n\n{{ JSON.stringify($json.episodes, null, 2) }}",
+        "text": "=# Goal\n\nSummarise the discussions that happended on a certain date between an agent and a user.\n\nYou get as input a JSON array of the messages exchanged between the agent and the user, and you have to return a JSON array of **discussion summaries**.\n\nA discussion summary is **topic-focused** and **succinct**. If several topics have been discussed, generate one entry for each topic.\nA discussion summary does not record each individual message, but **briefly consolidates the salient arguments**, possibly naming the user and agent if they disagree.\nA discussion summary is written in same language as that of the discussion.\n\n\n## Input Format\n\nThe JSON array of recent messages (episodes) is formatted as follows:\n- `date` (string): the date of the conversations.\n- `episodes` (array of documents): each document describes one message exchanged\n  - `episode.episode_type` = `user_message` : message sent by the user.\n  - `episode.episode_type` = `send_spontaneous_message` or `reply_to_user_message`: message sent by the agent.\n\n## Output format (CRITICAL)\n\nYou MUST return a single raw JSON array. No markdown. No prose. No explanation. No code fences. \nEach document in the JSON array must strictly follow the schema below:\n- `date` (string): the date of the conversations.\n- `discussion_summaries` (array of documents): contains\n  - `topic` (string): A **single, concise** topic label (e.g., `\"quantum computing principles\"`).\n  - `content` (string): short summary of the discussion about this topic.\n\n**Example:**\n\n{\n  \"date\": \"2026-06-03\",\n  \"discussion_summaries\": [\n    { \n      \"topic\": \"deep learning principles\",\n      \"content\": \"Neural networks learn by iteratively adjusting weights through backpropagation. User proposed to expand discussion scope to transformers another time.\"\n    }\n  ]\n}\n\nIf no information was summarised, then simply return a document with an empty summary: \n\n**Example:**\n\n{\n  \"date\": \"2026-06-03\",\n  \"discussion_summaries\": []\n}\n\n## Processing Instructions\n\n1. **Extract Information:**\n\nExtract the topic and conversation details from fields `content`.\n\n2. **Consolidate by Topic:**\n   - Group exchanges that relate to the **same topic**.\n   - Summarise their content into a **single, short** string.\n\n3. **Filter:**\n\nExclude messages that contain **no information**, e.g., only conversational politness, informal chat with no specific summarisable information, etc.\n\n# Data to be processed\n\n{{ JSON.stringify($json.episodes, null, 2) }}",
         "options": {
           "systemMessage": "=",
           "maxIterations": 1
@@ -27,31 +27,11 @@
       "typeVersion": 3.1,
       "position": [
         -80,
-        -672
+        -768
       ],
       "id": "acd8109c-9eeb-4e09-97f1-5d9534e42747",
       "name": "Consolidation Agent",
       "executeOnce": false
-    },
-    {
-      "parameters": {
-        "model": "gpt-5",
-        "options": {}
-      },
-      "id": "7b82e015-b8c9-476a-9098-033ce50e56ee",
-      "name": "LLM",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1,
-      "position": [
-        -64,
-        -448
-      ],
-      "credentials": {
-        "openAiApi": {
-          "id": "wFgW6IJzURdq98gW",
-          "name": "OpenAI account"
-        }
-      }
     },
     {
       "parameters": {
@@ -62,7 +42,7 @@
       "typeVersion": 1.4,
       "position": [
         64,
-        -448
+        -544
       ],
       "id": "366be1a3-d7d2-45d6-a97a-a9b14ee97598",
       "name": "Simple Memory"
@@ -80,7 +60,7 @@
       "typeVersion": 1,
       "position": [
         -752,
-        -672
+        -768
       ],
       "credentials": {
         "redis": {
@@ -91,7 +71,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = new Date();\nconst yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];\n\n// --- Build the list of episodes\nconst rawEpisodes = $('Get Episodes').first()?.json?.episodes || '[]';\nlet episodes = [];\nlet result = [];\n\ntry {\n  for (const rawEpisode of rawEpisodes) {\n    let episode = JSON.parse(rawEpisode)\n    if ([\"user_message\", \"reply_to_user_message\", \"send_spontaneous_message\"].includes(episode.episode_type)) {\n      delete episode.summarized;\n      delete episode.triggered_by;\n      delete episode.reason;\n      episodes.push(episode);\n    }\n  }\n\n  // Keep only episodes from yesterday\n  result = episodes.filter(ep => ep.timestamp.split('T')[0] === yesterday);\n\n  // Sort episodes in chronological order\n  result = result.sort((a, b) => a.timestamp.localeCompare(b.timestamp));\n\n} catch (e) {\n  throw new Error(\"Invalid list of episodes\");\n}\n\nreturn [{\n  json: {\n    date: yesterday,\n    episodes: result\n  }\n}];"
+        "jsCode": "const now = new Date();\nlet yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];\n\n// --- Build the list of episodes\nconst rawEpisodes = $('Get Episodes').first()?.json?.episodes || '[]';\nlet episodes = [];\nlet result = [];\n\ntry {\n  for (const rawEpisode of rawEpisodes) {\n    let episode = JSON.parse(rawEpisode)\n    if ([\"user_message\", \"reply_to_user_message\", \"send_spontaneous_message\"].includes(episode.episode_type)) {\n      delete episode.summarized;\n      delete episode.triggered_by;\n      delete episode.reason;\n      episodes.push(episode);\n    }\n  }\n\n  // Keep only episodes from yesterday\n  result = episodes.filter(ep => ep.timestamp.split('T')[0] === yesterday);\n\n  // Sort episodes in chronological order\n  result = result.sort((a, b) => a.timestamp.localeCompare(b.timestamp));\n\n} catch (e) {\n  throw new Error(\"Invalid list of episodes\");\n}\n\nreturn [{\n  json: {\n    date: yesterday,\n    episodes: result\n  }\n}];"
       },
       "id": "026deceb-c294-48cc-a9cc-365810390f97",
       "name": "Filter episodes",
@@ -99,7 +79,7 @@
       "typeVersion": 2,
       "position": [
         -528,
-        -672
+        -768
       ]
     },
     {
@@ -112,7 +92,7 @@
       "typeVersion": 2,
       "position": [
         272,
-        -672
+        -768
       ]
     },
     {
@@ -131,7 +111,7 @@
       "typeVersion": 1,
       "position": [
         -976,
-        -576
+        -672
       ],
       "alwaysOutputData": false,
       "executeOnce": false,
@@ -167,7 +147,7 @@
       "typeVersion": 2.3,
       "position": [
         -304,
-        -672
+        -768
       ],
       "id": "ee818fd6-4e0e-442e-a08e-a19ed3b9917b",
       "name": "If"
@@ -184,8 +164,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        496,
-        -672
+        720,
+        -768
       ],
       "credentials": {
         "redis": {
@@ -203,8 +183,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        944,
-        -672
+        1168,
+        -768
       ],
       "id": "9e92fb24-6a5e-41b9-8927-865de10f63c5",
       "name": "Set summaries",
@@ -217,16 +197,70 @@
     },
     {
       "parameters": {
-        "jsCode": "// Validated input format:\n// [\n//   {\n//     \"date\": \"2026-06-03\",\n//     \"discussion_summaries\": [\n//       { \n//         \"topic\": \"topic\",\n//         \"content\": \"summary string\"\n//       }\n//     ]\n//   }\n// ]\n\nconst rawSummaries = $('Get summaries').first()?.json?.discussion_summaries || '[]';\nlet summaries = [];\n\nconst input = $('Validate output').first()?.json || '[]';\nconst date = input.date;\n\ntry {\n  summaries = JSON.parse(rawSummaries);\n\n  // If date already in the summaries, replace the summaries \n  // for that date with the new summaries\n  const existingSummary = summaries.find(s => s.date === date);\n  if (existingSummary) {\n    existingSummary.discussion_summaries = input;\n  }\n  else {\n    // Otherwise, add a new entry for the date\n    summaries.push(input);\n  }\n} catch (e) {\n  throw new Error(\"Invalid list of summaries\");\n}\n\nreturn [{\n  json: {\n    summaries\n  }\n}];"
+        "jsCode": "// Validated input format:\n// [\n//   {\n//     \"date\": \"2026-06-03\",\n//     \"discussion_summaries\": [\n//       { \n//         \"topic\": \"topic\",\n//         \"content\": \"summary string\"\n//       }\n//     ]\n//   }\n// ]\n\nconst rawSummaries = $('Get summaries').first()?.json?.discussion_summaries || '[]';\nlet summaries = [];\n\nconst input = $('Validate output').first()?.json || '[]';\nconst date = input.date;\n\ntry {\n  summaries = JSON.parse(rawSummaries);\n\n  // If date already in the summaries, replace the summaries \n  // for that date with the new summaries\n  let index = summaries.findIndex(s => s.date === date);\n  if (index !== -1) {\n    summaries[index] = input;\n  } else {\n    // Otherwise, add a new entry for the date\n    summaries.push(input);\n  }\n} catch (e) {\n  throw new Error(\"Invalid list of summaries\");\n}\n\nreturn [{\n  json: {\n    summaries\n  }\n}];"
       },
       "id": "89375674-364e-4aa3-b91f-bf48126187d3",
       "name": "Update summaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        720,
-        -672
+        944,
+        -768
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9a9fbd6f-fe0b-45f6-becf-5991f2d62b36",
+              "leftValue": "={{ $json.discussion_summaries }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        496,
+        -768
+      ],
+      "id": "16940db0-f406-4cbb-925f-5dfb8b1e2691",
+      "name": "If non empty"
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3.8-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -544
+      ],
+      "id": "e4b9ea2d-8088-4378-a21c-0ff011c22022",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "rl0tO9ynZobyoFP8",
+          "name": "OpenRouter account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -237,17 +271,6 @@
           {
             "node": "Get Episodes",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LLM": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Consolidation Agent",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -301,7 +324,7 @@
       "main": [
         [
           {
-            "node": "Get summaries",
+            "node": "If non empty",
             "type": "main",
             "index": 0
           }
@@ -351,6 +374,28 @@
           }
         ]
       ]
+    },
+    "If non empty": {
+      "main": [
+        [
+          {
+            "node": "Get summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Consolidation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -359,7 +404,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "15f72bff-7625-46b2-a74c-3dd2c7f4c3b0",
+  "versionId": "4a9d309f-30e1-4e13-bb28-1f115b6690fe",
   "meta": {
     "instanceId": "a3b9182eae441cfc2bfcb6f19fe8a4d06d4b89df92eb0f0ebe630c6ece7fc5d1"
   },

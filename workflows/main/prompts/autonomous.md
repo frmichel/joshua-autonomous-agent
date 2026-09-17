@@ -68,7 +68,7 @@ Based on your own profile, the user's profile, your semantic memory, and recent 
 
 Always remember that:
 - you may use this automatic trigger to make web searches, look for new topics to discuss, delve into one of your goals, etc.
-- you may check your semantic memory at any time using the "read_semantic_mem" MCP tool.
+- you may check your semantic memory at any time using the "read_semantic_mem" MCP tool. **IMPORTANT**: Do not invoke the "read_semantic_mem" MCP tool more than 3 times at each run.
 
 ## Output format (CRITICAL)
 

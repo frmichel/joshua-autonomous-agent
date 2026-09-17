@@ -56,8 +56,8 @@ All services are deployed locally with Docker Compose.
 
 - Docker and Docker Compose.
 - A Tavily API key if web search is enabled.
-- A key for your LLM account (this installation uses an Open AI account key)
-- A WhatsApp account **for the agent** if the WhatsApp inbound messages are enabled.
+- A key for your LLM account (this installation uses an Open Router key)
+- A WhatsApp account **for the agent** if the WhatsApp inbound messages are enabled. Note that you cannot use a unique phone number as the sender and receiver as the Whasapp API does not generate events for incoming messages in this case.
 
 ### 1. Create the external Docker volumes
 
@@ -102,7 +102,7 @@ In n8n, configure credentials for:
 3. Qdrant (empty key)
 4. Tavily (API key)
 5. WhatsApp/wwebjs-api (empty key)
-6. LLM key (this installation uses an Open AI account key)
+6. LLM key (this installation uses an Open Router key)
 
 Install an embedding model for Ollama:
 
